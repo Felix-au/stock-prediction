@@ -4,5 +4,4 @@ yfinance
 scikit-learn
 pandas
 plotly
-time
 datetime
