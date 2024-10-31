@@ -36,31 +36,51 @@ def display_market_overview():
     st.sidebar.markdown("""
         <div style='text-align: center; padding: 20px;'>
             <h1 style='color: #6200ea;'>📈 Stock Predictor</h1>
-            <p style='color: #e0e0e0;'>Market Overview</p>
         </div>
     """, unsafe_allow_html=True)
-    
+
     indices = {
+        '^NSEI': 'Nifty 50',  
+        '^BSESN': 'Sensex',
         '^GSPC': 'S&P 500',
         '^DJI': 'Dow Jones',
-        '^IXIC': 'NASDAQ'
+        '^IXIC': 'NASDAQ',
+        '^RUT': 'Russell 2000',
     }
+    
+    st.sidebar.subheader("Market Overview")
+    
+    end_date = dt.now()
+    start_date = end_date - timedelta(days=7)
     
     for symbol, name in indices.items():
         try:
-            index = yf.download(symbol, period='1d')
-            if not index.empty:
-                change = ((index['Close'][-1] - index['Open'][0]) / index['Open'][0]) * 100
+            ticker = yf.Ticker(symbol)
+            data = ticker.history(start=start_date, end=end_date)
+            
+            if not data.empty:
+                latest_data = data.iloc[-1]
+                previous_close = data.iloc[-2]['Close'] if len(data) > 1 else latest_data['Open']
+                
+                current_price = latest_data['Close']
+                change = ((current_price - previous_close) / previous_close) * 100
+                
                 color = 'green' if change >= 0 else 'red'
                 arrow = '↑' if change >= 0 else '↓'
-                st.sidebar.markdown(f"""
-                    <div style='padding: 10px; background-color: #1e1e1e; border-radius: 5px; margin: 5px;'>
-                        <p style='color: #e0e0e0;'>{name}</p>
-                        <p style='color: {color};'>{arrow} {abs(change):.2f}%</p>
-                    </div>
-                """, unsafe_allow_html=True)
-        except Exception:
-            continue
+                
+                currency_symbol = '₹' if symbol in ['^NSEI', '^BSESN'] else '$'
+                
+                st.sidebar.markdown(
+                    f"{name}: {currency_symbol}{current_price:.2f} "
+                    f"<span style='color:{color};'>{arrow} {abs(change):.2f}%</span>",
+                    unsafe_allow_html=True
+                )
+            else:
+                st.sidebar.write(f"{name}: Data not available")
+        except Exception as e:
+            st.sidebar.write(f"{name}: Error fetching data")
+            st.error(f"Error fetching data for {name}: {str(e)}")
+
 
 def predict(stock, days_n):
     try:
@@ -241,11 +261,11 @@ def display_metrics(ticker):
     info = ticker.info
     
     metrics = {
-        "Market Cap": {
-            "value": info.get('marketCap', 'N/A'),
-            "format": lambda x: f"${int(x):,}" if isinstance(x, (int, float)) else "N/A",
-            "delta": "Total market value of the company",
-            "icon": "💰"
+        "Current Price": {
+            "value": info.get('currentPrice', 'N/A'),
+            "format": lambda x: f"${x:.2f}" if isinstance(x, (int, float)) else "N/A",
+            "delta": "Current market price",
+            "icon": "💵"  
         },
         "52 Week High": {
             "value": info.get('fiftyTwoWeekHigh', 'N/A'),
@@ -268,8 +288,33 @@ def display_metrics(ticker):
                 f"{data['icon']} {label}",
                 data['format'](data['value']),
                 data['delta'],
-                help=f"Click for more info about {label}"
             )
+
+def mkt_cap(ticker):
+    info = ticker.info
+    
+    metrics = {
+        "Market Cap": {
+        "value": info.get('marketCap', 'N/A'),
+        "format": lambda x: f"${int(x):,}" if isinstance(x, (int, float)) else "N/A",
+        "delta": "Total market value",
+        "icon": "💰"
+        },
+    }
+    
+    cols = st.columns(len(metrics))
+    for col, (label, data) in zip(cols, metrics.items()):
+        with col:
+            st.metric(
+                f"{data['icon']} {label}",
+                data['format'](data['value']),
+                data['delta'],
+            )
+
+def calculate_sma(stock_data, short_window=20, long_window=100):
+    short_sma = stock_data['Close'].rolling(window=short_window).mean()
+    long_sma = stock_data['Close'].rolling(window=long_window).mean()
+    return short_sma, long_sma
 
 def display_news(ticker):
     try:
@@ -306,8 +351,6 @@ def display_news(ticker):
     except Exception as e:
         st.error(f"Unable to fetch news: {str(e)}")
 
-display_market_overview()
-
 st.markdown("""
     <div style='text-align: center; padding: 20px;'>
         <h1 style='color: #6200ea; font-size: 3em;'>Advanced Stock Prediction App</h1>
@@ -321,6 +364,8 @@ with tab1:
     col1, col2 = st.columns([3, 1])
     
     with col1:
+        display_market_overview()
+
         stock_code = st.text_input("Enter stock code", key="stock_code", placeholder="e.g., AAPL, GOOGL, MSFT")
         
         if st.button("Analyze", key="analyze_button"):
@@ -332,9 +377,18 @@ with tab1:
                 ticker = yf.Ticker(stock_code.upper())
                 
                 with st.expander("Company Information", expanded=True):
+                    mkt_cap(ticker)
                     display_metrics(ticker)
                     info = ticker.info
-                    st.write(info.get('longBusinessSummary', 'No description available.'))
+                    st.write(info.get('longBusinessSummary', 'No description available.'))                    
+                    historical_data = ticker.history(period='5y')
+                    short_sma, long_sma = calculate_sma(historical_data)                    
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['Close'], mode='lines', name='Close Price', line=dict(color='blue')))
+                    fig.add_trace(go.Scatter(x=historical_data.index, y=short_sma, mode='lines', name='20-Day SMA', line=dict(color='orange')))
+                    fig.add_trace(go.Scatter(x=historical_data.index, y=long_sma, mode='lines', name='100-Day SMA', line=dict(color='red')))
+                    fig.update_layout(title=f"{stock_code.upper()} Price and SMAs", xaxis_title="Date", yaxis_title="Price (USD)", template="plotly_dark")
+                    st.plotly_chart(fig)
             else:
                 st.warning("Please enter a stock code.")
     
@@ -343,6 +397,7 @@ with tab1:
             display_news(yf.Ticker(stock_code))
         else:
             st.info("Enter a stock code")
+
 with tab3:
     st.markdown("### 🔮 Stock Price Prediction")
     forecast_days = st.slider("Number of days to forecast", 1, 60, 25)
@@ -362,7 +417,7 @@ with tab3:
 with tab2:
     st.markdown("### 📈 Technical Indicators")
     
-    start_date = st.date_input("Select start date", dt.now() - timedelta(days=30))
+    start_date = st.date_input("Select start date", dt.now() - timedelta(days=150))
     end_date = st.date_input("Select end date", dt.now())
     
     indicator = st.selectbox("Select Technical Indicator", ["RSI", "MACD"])
