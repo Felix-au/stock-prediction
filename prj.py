@@ -22,6 +22,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def is_nse_stock(stock_code):
+    return stock_code.upper().endswith('.NS')
+
 def load_animation():
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -80,7 +83,6 @@ def display_market_overview():
         except Exception as e:
             st.sidebar.write(f"{name}: Error fetching data")
             st.error(f"Error fetching data for {name}: {str(e)}")
-
 
 def predict(stock, days_n):
     try:
@@ -166,7 +168,7 @@ def predict(stock, days_n):
         fig.update_layout(
             title=f"Predicted Close Price for Next {days_n - 1} Days",
             xaxis_title="Date",
-            yaxis_title="Close Price",
+            yaxis_title=f"Value ({'₹' if is_nse_stock(stock) else '$'})",
             plot_bgcolor='#1e1e1e',
             paper_bgcolor='#121212',
             font_color='#e0e0e0',
@@ -200,7 +202,7 @@ def calculate_technical_indicators(df):
     
     return df
 
-def plot_technical_indicator(df, indicator):
+def plot_technical_indicator(df, indicator, stock_code):
     if not isinstance(df, pd.DataFrame):
         raise ValueError("Input must be a DataFrame")
 
@@ -208,6 +210,7 @@ def plot_technical_indicator(df, indicator):
       
     if indicator == "RSI":
         st.sidebar.info(f"📈 Generating RSI for {stock_code} from {start_date.strftime('%d %B %Y')} to {end_date.strftime('%d %B %Y')}")
+
         st.sidebar.info(f"Relative Strength Index: RSI is a momentum indicator that measures the magnitude of recent price changes to evaluate overbought or oversold conditions in the price of a stock or other asset.")
         st.sidebar.info(f"Calculation: The RSI is calculated using the following formula: RSI = 100 - [100 / (1 + RS)] Where RS = Average Gain / Average Loss")
         st.sidebar.info(f"Scale: RSI oscillates between 0 and 100.")
@@ -220,6 +223,7 @@ def plot_technical_indicator(df, indicator):
         
     elif indicator == "MACD":
         st.sidebar.info(f"📈 Generating MACD for {stock_code} from {start_date.strftime('%d %B %Y')} to {end_date.strftime('%d %B %Y')}")
+
         st.sidebar.info("""Moving Average Convergence Divergence: MACD is a trend-following momentum indicator that shows the relationship between two moving averages of a stock.""")
         st.sidebar.info(f"MACD Line = 12-day EMA - 26-day EMA")
         st.sidebar.info(f"Signal Line = 9-day EMA of MACD Line")
@@ -237,7 +241,7 @@ def plot_technical_indicator(df, indicator):
                                 text="Buy", showarrow=True, arrowhead=1)
             elif (df['MACD'].iloc[i] < df['Signal_Line'].iloc[i] and 
                 df['MACD'].iloc[i-1] >= df['Signal_Line'].iloc[i-1]):
-                fig.add_annotation(x=df.index[i], y=df['MACD'].iloc[i],
+                fig.add_annotation(x=df.index [i], y=df['MACD'].iloc[i],
                                 text="Sell", showarrow=True, arrowhead=1)
 
         title = "Moving Average Convergence Divergence (MACD)"
@@ -247,7 +251,7 @@ def plot_technical_indicator(df, indicator):
     fig.update_layout(
         title=title,
         xaxis_title="Date",
-        yaxis_title="Value",
+        yaxis_title=f"Value ({'₹' if is_nse_stock(stock_code) else '$'})",
         plot_bgcolor='#1e1e1e',
         paper_bgcolor='#121212',
         font_color='#e0e0e0',
@@ -257,25 +261,26 @@ def plot_technical_indicator(df, indicator):
     )
     return fig
 
-def display_metrics(ticker):
+def display_metrics(ticker, stock_code):
     info = ticker.info
+    currency_symbol = '₹' if is_nse_stock(stock_code) else '$'
     
     metrics = {
         "Current Price": {
             "value": info.get('currentPrice', 'N/A'),
-            "format": lambda x: f"${x:.2f}" if isinstance(x, (int, float)) else "N/A",
+            "format": lambda x: f"{currency_symbol}{x:.2f}" if isinstance(x, (int, float)) else "N/A",
             "delta": "Current market price",
             "icon": "💵"  
         },
         "52 Week High": {
             "value": info.get('fiftyTwoWeekHigh', 'N/A'),
-            "format": lambda x: f"${x:.2f}" if isinstance(x, (int, float)) else "N/A",
+            "format": lambda x: f"{currency_symbol}{x:.2f}" if isinstance(x, (int, float)) else "N/A",
             "delta": "Highest price in last 52 weeks",
             "icon": "⬆️"
         },
         "52 Week Low": {
             "value": info.get('fiftyTwoWeekLow', 'N/A'),
-            "format": lambda x: f"${x:.2f}" if isinstance(x, (int, float)) else "N/A",
+            "format": lambda x: f"{currency_symbol}{x:.2f}" if isinstance(x, (int, float)) else "N/A",
             "delta": "Lowest price in last 52 weeks",
             "icon": "⬇️"
         }
@@ -290,13 +295,14 @@ def display_metrics(ticker):
                 data['delta'],
             )
 
-def mkt_cap(ticker):
+def mkt_cap(ticker, stock_code):
     info = ticker.info
+    currency_symbol = '₹' if is_nse_stock(stock_code) else '$'
     
     metrics = {
         "Market Cap": {
         "value": info.get('marketCap', 'N/A'),
-        "format": lambda x: f"${int(x):,}" if isinstance(x, (int, float)) else "N/A",
+        "format": lambda x: f"{currency_symbol}{int(x):,}" if isinstance(x, (int, float)) else "N/A",
         "delta": "Total market value",
         "icon": "💰"
         },
@@ -323,12 +329,37 @@ def display_news(ticker):
             st.info("No recent news available for this stock.")
             return
 
-        st.markdown("""<div style='padding: 10px; background-color: #1e1e1e; border-radius: 10px;'><h3 style='color: #6200ea;'>📰 Latest News & Sentiment</h3></div>""", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style='padding: 10px; background-color: #1e1e1e; border-radius: 10px;'>
+                <h3 style='color: #6200ea;'>📰 Latest News & Sentiment</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        positive_words = [
+            'rise', 'gain', 'profit', 'up', 'high', 'strong', 'surge', 'growth', 'increase',
+            'improve', 'bullish', 'outperform', 'record high', 'optimistic', 'win', 'boost',
+            'achieve', 'positive', 'successful', 'peak', 'strength', 'expand', 'advancement',
+            'appreciation', 'support', 'benefit', 'recovery', 'exceed', 'upgrade', 'momentum',
+            'solid', 'resilient', 'milestone', 'uptrend', 'stability', 'robust', 'strengthen',
+            'innovation', 'accelerate', 'advantage', 'increasing', 'notable', 'gain', 'upside',
+            'revive', 'turnaround', 'expansion', 'strategic', 'favorable', 'confidence', 'record'
+        ]
+        
+        negative_words = [
+            'fall', 'drop', 'loss', 'down', 'low', 'weak', 'decline', 'decrease', 'losses',
+            'bearish', 'underperform', 'record low', 'pessimistic', 'fail', 'plummet', 'negative',
+            'crisis', 'concern', 'cut', 'reduce', 'downgrade', 'pressure', 'risk', 'volatility',
+            'recession', 'slump', 'default', 'uncertain', 'pullback', 'withdrawal', 'collapse',
+            'headwind', 'struggle', 'disappoint', 'deteriorate', 'delay', 'regress', 'stagnant',
+            'challenge', 'cutback', 'drop-off', 'fear', 'warning', 'bear market', 'turmoil',
+            'unfavorable', 'doubt', 'fluctuate', 'shortfall', 'weaken', 'hurdle', 'loss-making',
+            'pressure', 'reduce', 'retract', 'vulnerable', 'cutting', 'slowdown'
+        ]
 
         for article in news[:8]:
-            positive_words = ['rise', 'gain', 'profit', 'up', 'high', 'strong']
-            negative_words = ['fall', 'drop', 'loss', 'down', 'low', 'weak']
-            
             title = article.get('title', '').lower()
             sentiment_score = sum(word in title for word in positive_words) - sum(word in title for word in negative_words)
             
@@ -344,7 +375,16 @@ def display_news(ticker):
 
             with st.expander(f"{sentiment_icon} {article.get('title', 'No title')}"):
                 publish_date = dt.fromtimestamp(article.get('providerPublishTime', 0))
-                st.markdown(f"""<div style='padding: 10px; background-color: #2c2c2c; border-radius: 5px;'><p style='color: #e0e0e0;'><strong>Published:</strong> {publish_date.strftime('%Y-%m-%d %H:%M')}</p><p style='color: #e0e0e0;'><strong>Publisher:</strong> {article.get('publisher', 'Unknown')}</p><p style='color: #e0e0e0;'><strong>Sentiment:</strong> {sentiment_text}</p></div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f"""
+                    <div style='padding: 10px; background-color: #2c2c2c; border-radius: 5px;'>
+                        <p style='color: #e0e0e0;'><strong>Published:</strong> {publish_date.strftime('%Y-%m-%d %H:%M')}</p>
+                        <p style='color: #e0e0e0;'><strong>Publisher:</strong> {article.get('publisher', 'Unknown')}</p>
+                        <p style='color: #e0e0e0;'><strong>Sentiment:</strong> {sentiment_text}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
                 
                 if 'link' in article:
                     st.markdown(f"[Read full article]({article['link']})")
@@ -366,7 +406,7 @@ with tab1:
     with col1:
         display_market_overview()
 
-        stock_code = st.text_input("Enter stock code", key="stock_code", placeholder="e.g., AAPL, GOOGL, MSFT")
+        stock_code = st.text_input("Enter stock code", key="stock_code", placeholder="eg: AAPL, TCS.NS || add .NS for NSE stocks")
         
         if st.button("Analyze", key="analyze_button"):
             if stock_code:
@@ -377,8 +417,8 @@ with tab1:
                 ticker = yf.Ticker(stock_code.upper())
                 
                 with st.expander("Company Information", expanded=True):
-                    mkt_cap(ticker)
-                    display_metrics(ticker)
+                    mkt_cap(ticker, stock_code)
+                    display_metrics(ticker, stock_code)
                     info = ticker.info
                     st.write(info.get('longBusinessSummary', 'No description available.'))                    
                     historical_data = ticker.history(period='5y')
@@ -387,7 +427,7 @@ with tab1:
                     fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['Close'], mode='lines', name='Close Price', line=dict(color='blue')))
                     fig.add_trace(go.Scatter(x=historical_data.index, y=short_sma, mode='lines', name='20-Day SMA', line=dict(color='orange')))
                     fig.add_trace(go.Scatter(x=historical_data.index, y=long_sma, mode='lines', name='100-Day SMA', line=dict(color='red')))
-                    fig.update_layout(title=f"{stock_code.upper()} Price and SMAs", xaxis_title="Date", yaxis_title="Price (USD)", template="plotly_dark")
+                    fig.update_layout(title=f"{stock_code.upper()} Price and SMAs", xaxis_title="Date", yaxis_title=f"Price ({'₹' if is_nse_stock(stock_code) else '$'})", template="plotly_dark")
                     st.plotly_chart(fig)
             else:
                 st.warning("Please enter a stock code.")
@@ -431,7 +471,7 @@ with tab2:
                     st.warning("No data available for the selected date range.")
                 else:
                     df = calculate_technical_indicators(df)
-                    fig = plot_technical_indicator(df, indicator)
+                    fig = plot_technical_indicator(df, indicator, stock_code)
                     st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
