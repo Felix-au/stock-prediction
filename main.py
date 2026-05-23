@@ -200,7 +200,6 @@ with tab3:
     st.markdown("### 🔮 Stock Price Prediction")
     
     algorithm = st.selectbox("Select Forecasting Algorithm", [
-        "Support Vector Regression (SVR)",
         "Linear Regression",
         "Random Forest",
         "Gradient Boosting",

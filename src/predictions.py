@@ -1,11 +1,10 @@
 import streamlit as st
 import numpy as np
 import yfinance as yf
-from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 from datetime import date, timedelta
 import plotly.graph_objects as go
@@ -40,7 +39,7 @@ def get_prepared_data(stock):
     
     return x_train, x_test, y_train, y_test, scaler, df
 
-def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
+def predict(stock, days_n, algorithm="Linear Regression"):
     """
     Trains the chosen forecasting algorithm on historical data and predicts close price
     for the next days_n days. Returns a Plotly figure and performance metrics.
@@ -50,7 +49,6 @@ def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
             x_train, x_test, y_train, y_test, scaler, df = get_prepared_data(stock)
             
             algorithms = [
-                "Support Vector Regression (SVR)",
                 "Linear Regression",
                 "Random Forest",
                 "Gradient Boosting"
@@ -63,34 +61,7 @@ def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
             fig = go.Figure()
             
             for alg in algorithms:
-                if alg == "Support Vector Regression (SVR)":
-                    st.sidebar.info("Training SVR...")
-                    rsc = RandomizedSearchCV(
-                        estimator=SVR(kernel='rbf'),
-                        param_distributions={
-                            'C': [0.1, 1, 100, 1000],
-                            'epsilon': np.linspace(0.0001, 0.1, 10),
-                            'gamma': np.linspace(0.0001, 5, 10)
-                        },
-                        cv=5, n_iter=20, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
-                    )
-                    rsc.fit(x_train, y_train)
-                    best_params_rsc = rsc.best_params_
-                    
-                    param_grid = {
-                        'C': [best_params_rsc['C'] * 0.5, best_params_rsc['C'], best_params_rsc['C'] * 1.5],
-                        'epsilon': [best_params_rsc['epsilon'] * 0.5, best_params_rsc['epsilon'], best_params_rsc['epsilon'] * 1.5],
-                        'gamma': [best_params_rsc['gamma'] * 0.5, best_params_rsc['gamma'], best_params_rsc['gamma'] * 1.5]
-                    }
-                    
-                    gsc = GridSearchCV(
-                        estimator=SVR(kernel='rbf'),
-                        param_grid=param_grid,
-                        cv=5, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
-                    )
-                    gsc.fit(x_train, y_train)
-                    model = gsc.best_estimator_
-                elif alg == "Linear Regression":
+                if alg == "Linear Regression":
                     st.sidebar.info("Training Linear Regression...")
                     model = LinearRegression()
                     model.fit(x_train, y_train)
@@ -138,36 +109,7 @@ def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
         x_train, x_test, y_train, y_test, scaler, df = get_prepared_data(stock)
         
         # Select and train model
-        if algorithm == "Support Vector Regression (SVR)":
-            st.sidebar.info("Training SVR with Randomized + Grid Search Hyperparameter Tuning...")
-            rsc = RandomizedSearchCV(
-                estimator=SVR(kernel='rbf'),
-                param_distributions={
-                    'C': [0.1, 1, 100, 1000],
-                    'epsilon': np.linspace(0.0001, 0.1, 10),
-                    'gamma': np.linspace(0.0001, 5, 10)
-                },
-                cv=5, n_iter=20, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
-            )
-            rsc.fit(x_train, y_train)
-            best_params_rsc = rsc.best_params_
-            
-            param_grid = {
-                'C': [best_params_rsc['C'] * 0.5, best_params_rsc['C'], best_params_rsc['C'] * 1.5],
-                'epsilon': [best_params_rsc['epsilon'] * 0.5, best_params_rsc['epsilon'], best_params_rsc['epsilon'] * 1.5],
-                'gamma': [best_params_rsc['gamma'] * 0.5, best_params_rsc['gamma'], best_params_rsc['gamma'] * 1.5]
-            }
-            
-            gsc = GridSearchCV(
-                estimator=SVR(kernel='rbf'),
-                param_grid=param_grid,
-                cv=5, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
-            )
-            gsc.fit(x_train, y_train)
-            model = gsc.best_estimator_
-            st.sidebar.info(f"Hyperparameters optimized successfully.")
-
-        elif algorithm == "Linear Regression":
+        if algorithm == "Linear Regression":
             st.sidebar.info("Training Baseline Linear Regression Model...")
             model = LinearRegression()
             model.fit(x_train, y_train)
