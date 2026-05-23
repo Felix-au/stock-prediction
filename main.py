@@ -203,6 +203,7 @@ with tab3:
         "Linear Regression",
         "Random Forest",
         "Gradient Boosting",
+        "K-Nearest Neighbors",
         "ARIMA",
         "Run All and Compare"
     ], key="prediction_algorithm")
