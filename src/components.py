@@ -23,11 +23,10 @@ def display_market_overview():
     """
     Renders a live market overview section in the sidebar with ticker prices.
     """
-    st.sidebar.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h1 style='color: #6200ea;'>📈 QuantX</h1>
-        </div>
-    """, unsafe_allow_html=True)
+    col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+    with col2:
+        st.image("assets/logo.png", use_container_width=True)
+    st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
     indices = {
         '^NSEI': 'Nifty 50',  

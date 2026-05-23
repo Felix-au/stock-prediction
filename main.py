@@ -19,7 +19,7 @@ from src import (
 
 st.set_page_config(
     page_title="QuantX: Stock Analysis and Forecast",
-    page_icon="📈",
+    page_icon="assets/logo.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
