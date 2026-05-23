@@ -25,7 +25,7 @@ def display_market_overview():
     """
     st.sidebar.markdown("""
         <div style='text-align: center; padding: 20px;'>
-            <h1 style='color: #6200ea;'>📈 Stock Predictor</h1>
+            <h1 style='color: #6200ea;'>📈 QuantX</h1>
         </div>
     """, unsafe_allow_html=True)
 

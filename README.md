@@ -1,4 +1,4 @@
-# 📈 Advanced Stock Prediction App
+# 📈 QuantX: Stock Analysis and Forecast
 
 An elegant, high-fidelity AI-powered dashboard designed to analyze stock trends, compute technical indicators, and forecast stock prices using optimized Machine Learning.
 
@@ -34,7 +34,7 @@ This command will:
 The project has been refactored from a single monolithic file into a highly modular package directory structure, ensuring maximum code cleanliness, separation of concerns, and ease of testing:
 
 ```text
-stock-prediction/
+quantx/
 ├── pyproject.toml       # Modern uv packaging & dependency manager
 ├── uv.lock              # Auto-generated lockfile for reproducible environments
 ├── main.py              # Main Entry Point coordinating the tabs & sidebar UI

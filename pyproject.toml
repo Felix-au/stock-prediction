@@ -1,7 +1,7 @@
 [project]
-name = "stock-prediction"
+name = "quantx"
 version = "0.1.0"
-description = "Add your description here"
+description = "QuantX: Stock Analysis and Forecast"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

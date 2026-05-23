@@ -18,7 +18,7 @@ from src import (
 )
 
 st.set_page_config(
-    page_title="Stock Prediction App",
+    page_title="QuantX: Stock Analysis and Forecast",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -27,7 +27,7 @@ st.set_page_config(
 # Custom header
 st.markdown("""
     <div style='text-align: center; padding: 20px;'>
-        <h1 style='color: #6200ea; font-size: 3em;'>Advanced Stock Prediction App</h1>
+        <h1 style='color: #6200ea; font-size: 3em;'>QuantX: Stock Analysis and Forecast</h1>
         <p style='color: #e0e0e0;'>Analyze, predict, and visualize stock market trends with AI</p>
     </div>
 """, unsafe_allow_html=True)
