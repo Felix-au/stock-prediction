@@ -201,7 +201,8 @@ with tab3:
     
     algorithm = st.selectbox("Select Forecasting Algorithm", [
         "Support Vector Regression (SVR)",
-        "Linear Regression"
+        "Linear Regression",
+        "Random Forest"
     ], key="prediction_algorithm")
     
     forecast_days = st.slider("Number of days to forecast", 1, 60, 25)
