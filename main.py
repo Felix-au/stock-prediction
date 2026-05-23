@@ -202,7 +202,9 @@ with tab3:
     algorithm = st.selectbox("Select Forecasting Algorithm", [
         "Support Vector Regression (SVR)",
         "Linear Regression",
-        "Random Forest"
+        "Random Forest",
+        "Gradient Boosting",
+        "Run All and Compare"
     ], key="prediction_algorithm")
     
     forecast_days = st.slider("Number of days to forecast", 1, 60, 25)
@@ -211,15 +213,38 @@ with tab3:
         if stock_code:
             load_animation()
             try:
-                fig, metrics, forecast_data = predict(stock_code, forecast_days + 1, algorithm=algorithm)
-                st.plotly_chart(fig, width="stretch")
-                
-                # Show evaluation metrics
-                st.subheader("📊 Model Performance Metrics")
-                cols = st.columns(3)
-                cols[0].metric("📉 Root Mean Squared Error (RMSE)", f"{metrics['RMSE']:.4f}")
-                cols[1].metric("🎯 Mean Absolute Error (MAE)", f"{metrics['MAE']:.4f}")
-                cols[2].metric("📊 Mean Absolute Percentage Error (MAPE)", f"{metrics['MAPE']:.2%}")
+                if algorithm == "Run All and Compare":
+                    fig, metrics_dict, forecast_data = predict(stock_code, forecast_days + 1, algorithm=algorithm)
+                    st.plotly_chart(fig, width="stretch")
+                    
+                    st.subheader("📊 Model Performance Comparison")
+                    
+                    import pandas as pd
+                    comparison_df = pd.DataFrame(metrics_dict).T
+                    
+                    # Store a float copy for highlighting, format a string copy for display
+                    display_df = comparison_df.copy()
+                    display_df['MAPE'] = display_df['MAPE'].map(lambda x: f"{x:.2%}")
+                    
+                    st.dataframe(
+                        comparison_df.style.highlight_min(
+                            subset=['RMSE', 'MAE', 'MAPE'], 
+                            color="#3d0c75"
+                        ), 
+                        use_container_width=True
+                    )
+                    
+                    st.info("💡 Purple highlights indicate the best performing model (lowest error metrics) for this stock.")
+                else:
+                    fig, metrics, forecast_data = predict(stock_code, forecast_days + 1, algorithm=algorithm)
+                    st.plotly_chart(fig, width="stretch")
+                    
+                    # Show evaluation metrics
+                    st.subheader("📊 Model Performance Metrics")
+                    cols = st.columns(3)
+                    cols[0].metric("📉 Root Mean Squared Error (RMSE)", f"{metrics['RMSE']:.4f}")
+                    cols[1].metric("🎯 Mean Absolute Error (MAE)", f"{metrics['MAE']:.4f}")
+                    cols[2].metric("📊 Mean Absolute Percentage Error (MAPE)", f"{metrics['MAPE']:.2%}")
                 
                 st.success("Forecast generated successfully!")
             except Exception as e:

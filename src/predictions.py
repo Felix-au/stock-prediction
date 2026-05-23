@@ -3,7 +3,7 @@ import numpy as np
 import yfinance as yf
 from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
@@ -46,6 +46,95 @@ def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
     for the next days_n days. Returns a Plotly figure and performance metrics.
     """
     try:
+        if algorithm == "Run All and Compare":
+            x_train, x_test, y_train, y_test, scaler, df = get_prepared_data(stock)
+            
+            algorithms = [
+                "Support Vector Regression (SVR)",
+                "Linear Regression",
+                "Random Forest",
+                "Gradient Boosting"
+            ]
+            
+            metrics_dict = {}
+            forecasts = {}
+            future_dates = [date.today() + timedelta(days=i) for i in range(1, days_n)]
+            
+            fig = go.Figure()
+            
+            for alg in algorithms:
+                if alg == "Support Vector Regression (SVR)":
+                    st.sidebar.info("Training SVR...")
+                    rsc = RandomizedSearchCV(
+                        estimator=SVR(kernel='rbf'),
+                        param_distributions={
+                            'C': [0.1, 1, 100, 1000],
+                            'epsilon': np.linspace(0.0001, 0.1, 10),
+                            'gamma': np.linspace(0.0001, 5, 10)
+                        },
+                        cv=5, n_iter=20, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
+                    )
+                    rsc.fit(x_train, y_train)
+                    best_params_rsc = rsc.best_params_
+                    
+                    param_grid = {
+                        'C': [best_params_rsc['C'] * 0.5, best_params_rsc['C'], best_params_rsc['C'] * 1.5],
+                        'epsilon': [best_params_rsc['epsilon'] * 0.5, best_params_rsc['epsilon'], best_params_rsc['epsilon'] * 1.5],
+                        'gamma': [best_params_rsc['gamma'] * 0.5, best_params_rsc['gamma'], best_params_rsc['gamma'] * 1.5]
+                    }
+                    
+                    gsc = GridSearchCV(
+                        estimator=SVR(kernel='rbf'),
+                        param_grid=param_grid,
+                        cv=5, scoring='neg_mean_squared_error', verbose=0, n_jobs=-1
+                    )
+                    gsc.fit(x_train, y_train)
+                    model = gsc.best_estimator_
+                elif alg == "Linear Regression":
+                    st.sidebar.info("Training Linear Regression...")
+                    model = LinearRegression()
+                    model.fit(x_train, y_train)
+                elif alg == "Random Forest":
+                    st.sidebar.info("Training Random Forest...")
+                    model = RandomForestRegressor(n_estimators=100, max_depth=5, random_state=42)
+                    model.fit(x_train, y_train)
+                elif alg == "Gradient Boosting":
+                    st.sidebar.info("Training Gradient Boosting...")
+                    model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
+                    model.fit(x_train, y_train)
+                
+                # Metrics
+                test_predictions = model.predict(x_test)
+                rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
+                mae = mean_absolute_error(y_test, test_predictions)
+                mape = mean_absolute_percentage_error(y_test, test_predictions)
+                
+                metrics_dict[alg] = {"RMSE": rmse, "MAE": mae, "MAPE": mape}
+                
+                # Predictions
+                output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                                 (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+                predictions = model.predict(output_days)
+                forecasts[alg] = predictions
+                
+                # Plot line
+                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines+markers', name=alg))
+                
+            fig.update_layout(
+                title=f"Forecast close price Comparison for {stock.upper()}",
+                xaxis_title="Date",
+                yaxis_title=f"Value ({'₹' if is_nse_stock(stock) else '$'})",
+                plot_bgcolor='#1e1e1e',
+                paper_bgcolor='#121212',
+                font_color='#e0e0e0',
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor='#444'),
+                title_x=0.5
+            )
+            
+            return fig, metrics_dict, (future_dates, forecasts)
+
+        # Single algorithm path
         x_train, x_test, y_train, y_test, scaler, df = get_prepared_data(stock)
         
         # Select and train model
@@ -89,6 +178,12 @@ def predict(stock, days_n, algorithm="Support Vector Regression (SVR)"):
             model = RandomForestRegressor(n_estimators=100, max_depth=5, random_state=42)
             model.fit(x_train, y_train)
             st.sidebar.info("Random Forest model trained.")
+
+        elif algorithm == "Gradient Boosting":
+            st.sidebar.info("Training Gradient Boosting Model...")
+            model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
+            model.fit(x_train, y_train)
+            st.sidebar.info("Gradient Boosting model trained.")
 
         else:
             raise ValueError(f"Unknown forecasting algorithm: {algorithm}")
