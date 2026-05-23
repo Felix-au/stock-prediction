@@ -56,7 +56,8 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                 "K-Nearest Neighbors",
                 "ARIMA",
                 "Exponential Smoothing",
-                "XGBoost"
+                "XGBoost",
+                "Prophet"
             ]
             
             metrics_dict = {}
@@ -127,6 +128,31 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                     model_hw_full = ExponentialSmoothing(np.concatenate([y_train, y_test]), trend='add', seasonal=None, initialization_method="estimated")
                     model_hw_full_fit = model_hw_full.fit()
                     predictions = model_hw_full_fit.forecast(steps=days_n - 1)
+                elif alg == "Prophet":
+                    st.sidebar.info("Training Prophet...")
+                    from prophet import Prophet
+                    import pandas as pd
+                    prophet_train_df = pd.DataFrame({
+                        'ds': df['Date'][:len(y_train)].dt.tz_localize(None),
+                        'y': y_train
+                    })
+                    model_prophet = Prophet(daily_seasonality=True)
+                    model_prophet.fit(prophet_train_df)
+                    
+                    future_test = pd.DataFrame({'ds': df['Date'][len(y_train):].dt.tz_localize(None)})
+                    forecast_test = model_prophet.predict(future_test)
+                    test_predictions = forecast_test['yhat'].values
+                    
+                    prophet_full_df = pd.DataFrame({
+                        'ds': df['Date'].dt.tz_localize(None),
+                        'y': np.concatenate([y_train, y_test])
+                    })
+                    model_prophet_full = Prophet(daily_seasonality=True)
+                    model_prophet_full.fit(prophet_full_df)
+                    
+                    future_pred = pd.DataFrame({'ds': pd.to_datetime(future_dates)})
+                    forecast_full = model_prophet_full.predict(future_pred)
+                    predictions = forecast_full['yhat'].values
                 
                 # Metrics
                 rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
@@ -177,6 +203,31 @@ def predict(stock, days_n, algorithm="Linear Regression"):
             model_hw_full = ExponentialSmoothing(np.concatenate([y_train, y_test]), trend='add', seasonal=None, initialization_method="estimated")
             model_hw_full_fit = model_hw_full.fit()
             predictions = model_hw_full_fit.forecast(steps=days_n - 1)
+        elif algorithm == "Prophet":
+            st.sidebar.info("Training Prophet Model...")
+            from prophet import Prophet
+            import pandas as pd
+            prophet_train_df = pd.DataFrame({
+                'ds': df['Date'][:len(y_train)].dt.tz_localize(None),
+                'y': y_train
+            })
+            model_prophet = Prophet(daily_seasonality=True)
+            model_prophet.fit(prophet_train_df)
+            
+            future_test = pd.DataFrame({'ds': df['Date'][len(y_train):].dt.tz_localize(None)})
+            forecast_test = model_prophet.predict(future_test)
+            test_predictions = forecast_test['yhat'].values
+            
+            prophet_full_df = pd.DataFrame({
+                'ds': df['Date'].dt.tz_localize(None),
+                'y': np.concatenate([y_train, y_test])
+            })
+            model_prophet_full = Prophet(daily_seasonality=True)
+            model_prophet_full.fit(prophet_full_df)
+            
+            future_pred = pd.DataFrame({'ds': pd.to_datetime(future_dates)})
+            forecast_full = model_prophet_full.predict(future_pred)
+            predictions = forecast_full['yhat'].values
         else:
             # Select and train machine learning model
             if algorithm == "Linear Regression":

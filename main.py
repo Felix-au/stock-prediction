@@ -207,6 +207,7 @@ with tab3:
         "ARIMA",
         "Exponential Smoothing",
         "XGBoost",
+        "Prophet",
         "Run All and Compare"
     ], key="prediction_algorithm")
     
