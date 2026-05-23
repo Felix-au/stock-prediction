@@ -239,8 +239,15 @@ def display_news(ticker):
         ]
 
         for article in news[:8]:
-            title = article.get('title', '').lower()
-            sentiment_score = sum(word in title for word in positive_words) - sum(word in title for word in negative_words)
+            # Support both new nested 'content' structure and old flat structure
+            if 'content' in article:
+                content = article['content']
+            else:
+                content = article
+            
+            title = content.get('title', 'No title')
+            title_lower = title.lower()
+            sentiment_score = sum(word in title_lower for word in positive_words) - sum(word in title_lower for word in negative_words)
             
             if sentiment_score > 0:
                 sentiment_icon = "🟢"
@@ -252,20 +259,46 @@ def display_news(ticker):
                 sentiment_icon = "⚪"
                 sentiment_text = "Neutral"
 
-            with st.expander(f"{sentiment_icon} {article.get('title', 'No title')}"):
-                publish_date = dt.fromtimestamp(article.get('providerPublishTime', 0))
+            # Parse publish date
+            pub_date_raw = content.get('pubDate') or content.get('providerPublishTime')
+            if isinstance(pub_date_raw, str):
+                try:
+                    # ISO string '2026-05-23T21:05:00Z'
+                    publish_date = dt.strptime(pub_date_raw.split('.')[0].replace('Z', ''), '%Y-%m-%dT%H:%M:%S')
+                except Exception:
+                    publish_date = dt.now()
+            elif isinstance(pub_date_raw, (int, float)):
+                publish_date = dt.fromtimestamp(pub_date_raw)
+            else:
+                publish_date = dt.now()
+
+            # Parse publisher
+            provider = content.get('provider')
+            if isinstance(provider, dict):
+                publisher = provider.get('displayName', 'Unknown')
+            else:
+                publisher = content.get('publisher', 'Unknown')
+
+            # Parse link
+            click_through = content.get('clickThroughUrl')
+            if isinstance(click_through, dict):
+                link = click_through.get('url')
+            else:
+                link = content.get('link')
+
+            with st.expander(f"{sentiment_icon} {title}"):
                 st.markdown(
                     f"""
                     <div style='padding: 10px; background-color: #2c2c2c; border-radius: 5px;'>
                         <p style='color: #e0e0e0;'><strong>Published:</strong> {publish_date.strftime('%Y-%m-%d %H:%M')}</p>
-                        <p style='color: #e0e0e0;'><strong>Publisher:</strong> {article.get('publisher', 'Unknown')}</p>
+                        <p style='color: #e0e0e0;'><strong>Publisher:</strong> {publisher}</p>
                         <p style='color: #e0e0e0;'><strong>Sentiment:</strong> {sentiment_text}</p>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
                 
-                if 'link' in article:
-                    st.markdown(f"[Read full article]({article['link']})")
+                if link:
+                    st.markdown(f"[Read full article]({link})")
     except Exception as e:
         st.error(f"Unable to fetch news: {str(e)}")
