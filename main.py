@@ -198,14 +198,28 @@ with tab2:
 
 with tab3:
     st.markdown("### 🔮 Stock Price Prediction")
+    
+    algorithm = st.selectbox("Select Forecasting Algorithm", [
+        "Support Vector Regression (SVR)",
+        "Linear Regression"
+    ], key="prediction_algorithm")
+    
     forecast_days = st.slider("Number of days to forecast", 1, 60, 25)
     
     if st.button("Forecast"):
         if stock_code:
             load_animation()
             try:
-                fig = predict(stock_code, forecast_days + 1)
+                fig, metrics, forecast_data = predict(stock_code, forecast_days + 1, algorithm=algorithm)
                 st.plotly_chart(fig, width="stretch")
+                
+                # Show evaluation metrics
+                st.subheader("📊 Model Performance Metrics")
+                cols = st.columns(3)
+                cols[0].metric("📉 Root Mean Squared Error (RMSE)", f"{metrics['RMSE']:.4f}")
+                cols[1].metric("🎯 Mean Absolute Error (MAE)", f"{metrics['MAE']:.4f}")
+                cols[2].metric("📊 Mean Absolute Percentage Error (MAPE)", f"{metrics['MAPE']:.2%}")
+                
                 st.success("Forecast generated successfully!")
             except Exception as e:
                 st.error(f"Error generating forecast: {str(e)}")
