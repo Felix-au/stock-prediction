@@ -54,7 +54,8 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                 "Random Forest",
                 "Gradient Boosting",
                 "K-Nearest Neighbors",
-                "ARIMA"
+                "ARIMA",
+                "Exponential Smoothing"
             ]
             
             metrics_dict = {}
@@ -106,6 +107,16 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                     model_arima_full = ARIMA(np.concatenate([y_train, y_test]), order=(5, 1, 0))
                     model_arima_full_fit = model_arima_full.fit()
                     predictions = model_arima_full_fit.forecast(steps=days_n - 1)
+                elif alg == "Exponential Smoothing":
+                    st.sidebar.info("Training Exponential Smoothing...")
+                    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+                    model_hw = ExponentialSmoothing(y_train, trend='add', seasonal=None, initialization_method="estimated")
+                    model_hw_fit = model_hw.fit()
+                    test_predictions = model_hw_fit.forecast(steps=len(y_test))
+                    
+                    model_hw_full = ExponentialSmoothing(np.concatenate([y_train, y_test]), trend='add', seasonal=None, initialization_method="estimated")
+                    model_hw_full_fit = model_hw_full.fit()
+                    predictions = model_hw_full_fit.forecast(steps=days_n - 1)
                 
                 # Metrics
                 rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
@@ -146,6 +157,16 @@ def predict(stock, days_n, algorithm="Linear Regression"):
             model_arima_full = ARIMA(np.concatenate([y_train, y_test]), order=(5, 1, 0))
             model_arima_full_fit = model_arima_full.fit()
             predictions = model_arima_full_fit.forecast(steps=days_n - 1)
+        elif algorithm == "Exponential Smoothing":
+            st.sidebar.info("Training Exponential Smoothing Model...")
+            from statsmodels.tsa.holtwinters import ExponentialSmoothing
+            model_hw = ExponentialSmoothing(y_train, trend='add', seasonal=None, initialization_method="estimated")
+            model_hw_fit = model_hw.fit()
+            test_predictions = model_hw_fit.forecast(steps=len(y_test))
+            
+            model_hw_full = ExponentialSmoothing(np.concatenate([y_train, y_test]), trend='add', seasonal=None, initialization_method="estimated")
+            model_hw_full_fit = model_hw_full.fit()
+            predictions = model_hw_full_fit.forecast(steps=days_n - 1)
         else:
             # Select and train machine learning model
             if algorithm == "Linear Regression":

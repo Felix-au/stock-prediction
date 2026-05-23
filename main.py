@@ -205,6 +205,7 @@ with tab3:
         "Gradient Boosting",
         "K-Nearest Neighbors",
         "ARIMA",
+        "Exponential Smoothing",
         "Run All and Compare"
     ], key="prediction_algorithm")
     
