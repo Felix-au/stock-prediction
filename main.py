@@ -206,6 +206,7 @@ with tab3:
         "K-Nearest Neighbors",
         "ARIMA",
         "Exponential Smoothing",
+        "XGBoost",
         "Run All and Compare"
     ], key="prediction_algorithm")
     

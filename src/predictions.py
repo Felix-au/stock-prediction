@@ -55,7 +55,8 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                 "Gradient Boosting",
                 "K-Nearest Neighbors",
                 "ARIMA",
-                "Exponential Smoothing"
+                "Exponential Smoothing",
+                "XGBoost"
             ]
             
             metrics_dict = {}
@@ -84,6 +85,15 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                 elif alg == "Gradient Boosting":
                     st.sidebar.info("Training Gradient Boosting...")
                     model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
+                    model.fit(x_train, y_train)
+                    test_predictions = model.predict(x_test)
+                    output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                                     (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+                    predictions = model.predict(output_days)
+                elif alg == "XGBoost":
+                    st.sidebar.info("Training XGBoost...")
+                    from xgboost import XGBRegressor
+                    model = XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
                     model.fit(x_train, y_train)
                     test_predictions = model.predict(x_test)
                     output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
@@ -186,6 +196,13 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                 model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
                 model.fit(x_train, y_train)
                 st.sidebar.info("Gradient Boosting model trained.")
+
+            elif algorithm == "XGBoost":
+                st.sidebar.info("Training XGBoost Model...")
+                from xgboost import XGBRegressor
+                model = XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
+                model.fit(x_train, y_train)
+                st.sidebar.info("XGBoost model trained.")
 
             elif algorithm == "K-Nearest Neighbors":
                 st.sidebar.info("Training K-Nearest Neighbors Model...")
