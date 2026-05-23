@@ -51,7 +51,8 @@ def predict(stock, days_n, algorithm="Linear Regression"):
             algorithms = [
                 "Linear Regression",
                 "Random Forest",
-                "Gradient Boosting"
+                "Gradient Boosting",
+                "ARIMA"
             ]
             
             metrics_dict = {}
@@ -65,27 +66,43 @@ def predict(stock, days_n, algorithm="Linear Regression"):
                     st.sidebar.info("Training Linear Regression...")
                     model = LinearRegression()
                     model.fit(x_train, y_train)
+                    test_predictions = model.predict(x_test)
+                    output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                                     (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+                    predictions = model.predict(output_days)
                 elif alg == "Random Forest":
                     st.sidebar.info("Training Random Forest...")
                     model = RandomForestRegressor(n_estimators=100, max_depth=5, random_state=42)
                     model.fit(x_train, y_train)
+                    test_predictions = model.predict(x_test)
+                    output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                                     (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+                    predictions = model.predict(output_days)
                 elif alg == "Gradient Boosting":
                     st.sidebar.info("Training Gradient Boosting...")
                     model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
                     model.fit(x_train, y_train)
+                    test_predictions = model.predict(x_test)
+                    output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                                     (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+                    predictions = model.predict(output_days)
+                elif alg == "ARIMA":
+                    st.sidebar.info("Training ARIMA...")
+                    from statsmodels.tsa.arima.model import ARIMA
+                    model_arima = ARIMA(y_train, order=(5, 1, 0))
+                    model_arima_fit = model_arima.fit()
+                    test_predictions = model_arima_fit.forecast(steps=len(y_test))
+                    
+                    model_arima_full = ARIMA(np.concatenate([y_train, y_test]), order=(5, 1, 0))
+                    model_arima_full_fit = model_arima_full.fit()
+                    predictions = model_arima_full_fit.forecast(steps=days_n - 1)
                 
                 # Metrics
-                test_predictions = model.predict(x_test)
                 rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
                 mae = mean_absolute_error(y_test, test_predictions)
                 mape = mean_absolute_percentage_error(y_test, test_predictions)
                 
                 metrics_dict[alg] = {"RMSE": rmse, "MAE": mae, "MAPE": mape}
-                
-                # Predictions
-                output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
-                                                 (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
-                predictions = model.predict(output_days)
                 forecasts[alg] = predictions
                 
                 # Plot line
@@ -107,31 +124,50 @@ def predict(stock, days_n, algorithm="Linear Regression"):
 
         # Single algorithm path
         x_train, x_test, y_train, y_test, scaler, df = get_prepared_data(stock)
-        
-        # Select and train model
-        if algorithm == "Linear Regression":
-            st.sidebar.info("Training Baseline Linear Regression Model...")
-            model = LinearRegression()
-            model.fit(x_train, y_train)
-            st.sidebar.info("Linear Regression model trained.")
+        future_dates = [date.today() + timedelta(days=i) for i in range(1, days_n)]
 
-        elif algorithm == "Random Forest":
-            st.sidebar.info("Training Random Forest Model...")
-            model = RandomForestRegressor(n_estimators=100, max_depth=5, random_state=42)
-            model.fit(x_train, y_train)
-            st.sidebar.info("Random Forest model trained.")
-
-        elif algorithm == "Gradient Boosting":
-            st.sidebar.info("Training Gradient Boosting Model...")
-            model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
-            model.fit(x_train, y_train)
-            st.sidebar.info("Gradient Boosting model trained.")
-
+        if algorithm == "ARIMA":
+            st.sidebar.info("Training ARIMA(5, 1, 0) Model...")
+            from statsmodels.tsa.arima.model import ARIMA
+            model_arima = ARIMA(y_train, order=(5, 1, 0))
+            model_arima_fit = model_arima.fit()
+            test_predictions = model_arima_fit.forecast(steps=len(y_test))
+            
+            model_arima_full = ARIMA(np.concatenate([y_train, y_test]), order=(5, 1, 0))
+            model_arima_full_fit = model_arima_full.fit()
+            predictions = model_arima_full_fit.forecast(steps=days_n - 1)
         else:
-            raise ValueError(f"Unknown forecasting algorithm: {algorithm}")
+            # Select and train machine learning model
+            if algorithm == "Linear Regression":
+                st.sidebar.info("Training Baseline Linear Regression Model...")
+                model = LinearRegression()
+                model.fit(x_train, y_train)
+                st.sidebar.info("Linear Regression model trained.")
 
-        # Make predictions on test set for validation
-        test_predictions = model.predict(x_test)
+            elif algorithm == "Random Forest":
+                st.sidebar.info("Training Random Forest Model...")
+                model = RandomForestRegressor(n_estimators=100, max_depth=5, random_state=42)
+                model.fit(x_train, y_train)
+                st.sidebar.info("Random Forest model trained.")
+
+            elif algorithm == "Gradient Boosting":
+                st.sidebar.info("Training Gradient Boosting Model...")
+                model = GradientBoostingRegressor(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42)
+                model.fit(x_train, y_train)
+                st.sidebar.info("Gradient Boosting model trained.")
+
+            else:
+                raise ValueError(f"Unknown forecasting algorithm: {algorithm}")
+
+            # Make predictions on test set for validation
+            test_predictions = model.predict(x_test)
+            
+            # Forecast future values
+            output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
+                                             (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
+            predictions = model.predict(output_days)
+
+        # Common evaluation metrics calculation
         rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
         mae = mean_absolute_error(y_test, test_predictions)
         mape = mean_absolute_percentage_error(y_test, test_predictions)
@@ -139,12 +175,6 @@ def predict(stock, days_n, algorithm="Linear Regression"):
         st.sidebar.info(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
         st.sidebar.info(f"Mean Absolute Error (MAE): {mae:.4f}")
         st.sidebar.info(f"Mean Absolute Percentage Error (MAPE): {mape:.2%}")
-
-        # Forecast future values
-        output_days = scaler.transform([[i + x_test[-1][0], (date.today() + timedelta(days=i)).weekday(), 
-                                         (date.today() + timedelta(days=i)).month] for i in range(1, days_n)])
-        future_dates = [date.today() + timedelta(days=i) for i in range(1, days_n)]
-        predictions = model.predict(output_days)
 
         # Plot predicted results
         fig = go.Figure()
